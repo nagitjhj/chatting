@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        *{
+            margin:0;
+            padding:0;
+        }
+        .container{
+            width: 500px;
+            margin: 0 auto;
+            padding: 25px
+        }
+        .container h1{
+            text-align: left;
+            padding: 5px 5px 5px 5px;
+            color: black;
+            margin-bottom: 20px;
+        }
+
+        .chatting{
+            border : 1px solid gray;
+            width: 700px;
+            height: 700px;
+            overflow: auto;
+        }
+        .chatting p{
+            text-align: left;
+        }
+        input{
+            width: 450px;
+            height: 50px;
+        }
+
+        th{
+            width : 100px;
+        }
+        #yourMsg{
+            width: 700px;
+        }
+        .me{
+            background-color : #ffc;
+            margin : 1px 0px 2px 30%;
+        }
+
+        .other{
+            background-color : #eee;
+            margin : 2px;
+        }
+    </style>
+</head>
+<body>
+<!--    <h1>나의 랜덤채팅</h1>-->
+<!--    <div id="conversation"></div>-->
+<!--    <input type="text" id="message" />-->
+<!--    <button onclick="sendMessage()">Send</button>-->
+
+<div class="container" id="container">
+    <h1 id="title_room">채팅방제목</h1>
+    <input id="myId" placeholder="내 아이디">
+    <div id="chatting" class="chatting">
+    </div>
+    <div id="yourMsg">
+        <table class="inputTable">
+            <tr>
+                <th>메시지</th>
+                <th><input id="msg" placeholder="보내실 메시지를 입력하세요."></th>
+                <th><button onclick="sendMessage()" id="sendBtn">보내기</button></th>
+            </tr>
+        </table>
+    </div>
+</div>
+<script>
+    // let sender = [[${sessionId}]];
+
+    let stompClient = null;
+    let userId = window.prompt("@보내실 분의 Id 입력해주세요@"); //이거는 보낼사람 세션
+    let recipient = document.getElementById('myId').value //이거는 나의 세션
+
+    function connect() {
+        //endpoint로 SockJS 객체, StompClient 객체 생성
+        let socket = new SockJS('/ws');
+        //Handshack -> 뭐람?
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+                console.log('Connected : ' + frame);
+                // stompClient.subscribe('/queue/' + recipient, function (message) {
+                //subscribe의 url에서 메시지를 받음
+                stompClient.subscribe('/topic/star', function (message) {
+                    showMessage(JSON.parse(message.body));
+                });
+
+                stompClient.subscribe('/user/queue/reply', function (message) {
+                    showMessage(JSON.parse(message.body));
+                })
+
+            },
+            function (e) {
+                //콜백 에러
+                console.log('에러'+e);
+            }
+        );
+    }
+
+    $('#msg').keypress(function (e) {
+        if(e.keyCode === 13) sendMessageStar();
+    })
+
+    function sendMessage() {
+        let messageContent = document.getElementById('msg').value;
+        stompClient.send("/app/star", {},JSON.stringify({
+            // 'userId' : userId,
+            'sender': userId,
+            'recipient': document.getElementById('myId').value, //현재 사용자
+            'content': messageContent
+        }));
+        document.getElementById('msg').value = '';
+    }
+
+    function sendMessageStar() {
+        let messageContent = document.getElementById('msg').value;
+        stompClient.send("/app/sendToUser", {},JSON.stringify({
+            // 'userId' : userId,
+            'sender': userId,
+            'recipient': document.getElementById('myId').value, //현재 사용자
+            'content': messageContent
+        }));
+
+        document.getElementById('msg').value = '';
+    }
+
+    // function showMessage(message) {
+    //     let conversation = document.getElementById('conversation');
+    //     let p = document.createElement('p');
+    //     p.appendChild(document.createTextNode(message));
+    //     conversation.appendChild(p);
+    // }
+
+    function showMessage(data){
+        // if(data.sender===sender){
+        //     $('#chatting').append("<p class='me'>"+data.sender+" : "+data.content+"</p>");
+        // } else {
+        //     $('#chatting').append("<p class='other'>"+data.sender+" : "+data.content+"</p>");
+        // }
+
+        // let data = JSON.parse(msg.data);
+        let chatting = document.getElementById('chatting');
+        let css;
+
+        if(data.recipient === document.getElementById('myId').value) {
+            css = 'class=me';
+        }else {
+            css = 'class=other';
+        }
+
+        let item = `
+                <div ${css}
+                    <span><b>${data.recipient}</b></span><br/>
+                    <span>${data.content}</span>
+                </div>
+            `;
+
+        chatting.innerHTML += item;
+        chatting.scrollTop = chatting.scrollHeight;
+    }
+
+    connect();
+
+</script>
+</body>
+</html>
