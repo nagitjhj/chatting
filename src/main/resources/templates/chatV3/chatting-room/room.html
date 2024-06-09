@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>room</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+
+    <style>
+        *{
+            box-sizing: border-box;
+        }
+
+        #chat{
+            width: 1000px;
+            margin: 20px auto;
+            display: flex;
+        }
+
+        #chat #talk{
+            width: 800px;
+            height: 400px;
+            overflow: scroll;
+            border : 1px solid #aaa;
+        }
+        #chat #msg{
+            width: 740px;
+            height:100px;
+            display: inline-block;
+        }
+
+        #chat #sendZone > *{
+            vertical-align: top;
+
+        }
+        #chat #btnSend{
+            width: 54px;
+            height: 100px;
+        }
+
+        #chat #talk div{
+            width: 70%;
+            display: inline-block;
+            padding: 6px;
+            border-radius:10px;
+
+        }
+
+        #chat .me{
+            background-color : #ffc;
+            margin : 1px 0px 2px 30%;
+        }
+
+        #chat .other{
+            background-color : #eee;
+            margin : 2px;
+        }
+
+        #users {
+            width: 200px;
+            height: 400px;
+            overflow-y: scroll;
+            border: 1px solid #aaa;
+            margin-left: 10px;
+            padding: 10px;
+        }
+
+        #users ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #users li {
+            margin: 5px 0;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+<div id="chat">
+    <div>
+        <div id="hostDiv"></div>
+        <a href="/chatV3/chatting-room/room-list"><h2>채팅방 목록을 가기^^</h2></a>
+        <h1>[[${room.title}]]</h1>
+        <div id="numberDiv">
+            <div id="numberCount"></div>/
+            <div id="number">[[${room.number}]]</div>
+        </div>
+    <!--    <div th:each="member : ${room.getMemberList()}">-->
+    <!--        <div th:value="${member.getNickname()}"></div>-->
+    <!--    </div>-->
+        <br/>
+
+        <div id="talk"></div>
+        <div id="sendZone">
+            <input type="hidden" id="myId">
+            <textarea id="msg" value="웰컴...하이..."></textarea>
+            <input type="button" value="전송" id="btnSend" onclick="sendMessage()">
+        </div>
+    </div>
+    <div id="users">
+        <h3>Users</h3>
+        <ul id="userList"></ul>
+        <input type="hidden" id="mySession" value="">
+        <input type="hidden" id="hostSession" value="">
+    </div>
+</div>
+
+
+<script>
+    let roomId = [[${room.roomId}]];
+
+    function connect() {
+        let socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({'roomId': roomId}, function (frame) {
+                console.log('Connected : ' + frame);
+
+                stompClient.subscribe('/room/member/'+roomId, function (message) {
+                    console.log('Room message: ' + message.body);
+                    showMember(JSON.parse(message.body));
+                    // enterMember(JSON.parse(message.body));
+                });
+
+                // stompClient.subscribe('/queue/' + recipient, function (message) {
+                //subscribe의 url에서 메시지를 받음
+                stompClient.subscribe('/topic/'+roomId, function (message) {
+                    showMessage(JSON.parse(message.body));
+                });
+
+                stompClient.subscribe('/room/delete/'+roomId, function (message) {
+                    // showMessage(JSON.parse(message.body));
+                    deleteRoom();
+                });
+
+                // stompClient.subscribe('/user/queue/reply', function (message) {
+                //     showMessage(JSON.parse(message.body));
+                // })
+
+                stompClient.send('/app/room/'+roomId, {},JSON.stringify({
+                    'state': 'ok',
+                }));
+
+            },
+            function (e) {
+                //콜백 에러
+                console.log('에러'+e);
+            }
+        );
+    }
+
+    function sendMessage() {
+        let messageContent = document.getElementById('msg').value;
+        stompClient.send("/app/"+roomId, {},JSON.stringify({
+            // 'userId' : userId,
+            'sender': document.getElementById('myId').value,
+            'content': messageContent,
+            'date':  new Date().toLocaleString()
+        }));
+        document.getElementById('msg').value = '';
+    }
+
+
+    function showMessage(data){
+        let chatting = document.getElementById('talk');
+        // let mySession = document.getElementById('mySession').value;
+        let hostSession = document.getElementById('hostSession').value;
+        // let senderId = document.getElementById('hostSession').value;
+        // let host;
+        let css;
+
+        // if(mySession === hostSession){
+        //     host = '(방장)';
+        // }
+
+        if(data.sender === document.getElementById('myId').value) {
+            css = 'class=me';
+        }else {
+            css = 'class=other';
+        }
+
+        let item = `
+                <div ${css}
+                    <span><b>${data.sender} ${data.senderId === hostSession?'(방장)':''} </b>  ${data.date}</span><br/>
+                    <span>${data.content}</span>
+                </div>
+            `;
+
+        chatting.innerHTML += item;
+        chatting.scrollTop = chatting.scrollHeight;
+    }
+
+
+    function showMember(data){
+        console.log(data);
+        //1. 인원수
+        document.getElementById('numberCount').innerText = data.memberCount;
+        // document.getElementById('number').innerText = data.number;
+
+        //2. 인원
+        const userList = document.getElementById('userList');
+        userList.innerHTML = ''; // Clear the existing list
+        document.getElementById('hostSession').value = data.host;
+
+        data.memberList.forEach(user => {
+            const li = document.createElement('li');
+            const mySession = document.getElementById('mySession');
+            li.textContent = user.nickname;
+            if(mySession.value === ''){
+                mySession.value = data.mySession;
+            }
+            if(user.id === mySession.value){
+                li.textContent += ' (나)';
+                document.getElementById('myId').value = user.nickname;
+            }
+            if(user.id === data.host){
+                li.textContent += ' (방장)';
+                let hostDiv = document.getElementById('hostDiv');
+                let hostA = `
+                    <a href="#" onclick="deleteRoomRequest(roomId)"><h4>채팅방없애기(내가 방장~^^~)</h4></a>
+                `;
+                hostDiv.innerHTML += hostA;
+            }
+            userList.appendChild(li);
+        });
+    }
+
+    function plusMember(data){
+        console.log(data);
+        //1. 인원수
+        document.getElementById('numberCount').innerText = data.memberCount;
+        // document.getElementById('number').innerText = data.number;
+
+        //2. 인원
+        const userList = document.getElementById('userList');
+        document.getElementById('hostSession').value = data.host;
+
+        data.memberList.forEach(user => {
+            const li = document.createElement('li');
+            const mySession = document.getElementById('mySession');
+            li.textContent = user.nickname;
+            if(mySession.value === ''){
+                mySession.value = data.mySession;
+            }
+            if(user.id === mySession.value){
+                li.textContent += ' (나)';
+                document.getElementById('myId').value = user.nickname;
+            }
+            if(user.id === data.host){
+                li.textContent += ' (방장)';
+                let hostDiv = document.getElementById('hostDiv');
+                let hostA = `
+                    <a href="#" onclick="deleteRoomRequest(roomId)"><h2>채팅방없애기(내가 방장~^^~)</h2></a>
+                `;
+                hostDiv.innerText += hostA;
+            }
+            userList.appendChild(li);
+        });
+    }
+
+    function deleteMember(data){
+        console.log(data);
+        //1. 인원수
+        document.getElementById('numberCount').innerText = data.memberCount;
+        // document.getElementById('number').innerText = data.number;
+
+        //2. 인원
+        const userList = document.getElementById('userList');
+        userList.innerHTML = ''; // Clear the existing list
+        document.getElementById('hostSession').value = data.host;
+
+        data.memberList.forEach(user => {
+            const li = document.createElement('li');
+            const mySession = document.getElementById('mySession');
+            li.textContent = user.nickname;
+            if(mySession.value === ''){
+                mySession.value = data.mySession;
+            }
+            if(user.id === mySession.value){
+                li.textContent += ' (나)';
+                document.getElementById('myId').value = user.nickname;
+            }
+            if(user.id === data.host){
+                li.textContent += ' (방장)';
+                let hostDiv = document.getElementById('hostDiv');
+                let hostA = `
+                    <a href="#" onclick="deleteRoomRequest(roomId)"><h2>채팅방없애기(내가 방장~^^~)</h2></a>
+                `;
+                hostDiv.innerText += hostA;
+            }
+            userList.appendChild(li);
+        });
+    }
+
+    function deleteRoomRequest(id) {
+        fetch('/chatV3/chatting-room/room', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({roomId: id})
+        }).then(data => {
+            location.href = '/chatV3/chatting-room/room-list';
+        })
+    }
+
+    function deleteRoom() {
+        alert('방이...없어졌습니다....방장이 방을 없애버렸습니다.....');
+        location.href = '/chatV3/chatting-room/room-list';
+    }
+
+    $('#msg').keypress(function (e) {
+        if(e.keyCode === 13) sendMessageStar();
+    });
+
+    connect();
+
+    window.addEventListener('beforeunload', function () {
+        stompClient.send("/app/close", {}, JSON.stringify({roomId:roomId}));
+        stompClient.disconnect();
+    });
+</script>
+</body>
+</html>

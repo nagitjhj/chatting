@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>create-room</title>
+</head>
+<body>
+    <h1>채팅방 만들기^^</h1>
+    <form action="/chatV3/chatting-room/room" method="post">
+        <input type="text" id="title" name="title" placeholder="채팅방제목입력바람"><br/>
+        <input type="number" id="number" name="number" placeholder="채팅방인원수입력" max="5" min="2" value="2">
+        <button id="createBtn">만들기</button>
+    </form>
+
+<script>
+    // document.getElementById('createBtn').addEventListener('click', function () {
+    //     let title = document.getElementById('title').value;
+    //     let number = document.getElementById('number').value;
+    //
+    //     let dto = {
+    //         'title': title,
+    //         'number': number
+    //     }
+    //
+    //     fetch('chatV3/chatting-room/room', dto)
+    // })
+</script>
+</body>
+</html>

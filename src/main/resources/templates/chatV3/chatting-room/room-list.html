@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>room-list</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+
+</head>
+<body>
+<h1>채팅방들입니다...없으면 만들어보세요....</h1>
+<a href="/chatV3/chatting-room/create-room"><h2>채팅방 만들기(나도 방장 가능)</h2></a>
+
+<div id="roomDiv">
+    <ul id="roomUl">
+    </ul>
+</div>
+
+<script>
+    function joinRoom(roomId) {
+        let form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/chatV3/chatting-room/room/'+roomId;
+        let hiddenField = document.createElement('input');
+        hiddenField.type = 'hidden';
+        hiddenField.name = 'roomId';
+        hiddenField.value = roomId;
+        form.appendChild(hiddenField);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+
+    function connect() {
+        let socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+                console.log('Connected : ' + frame);
+
+                // stompClient.subscribe('/room/room-list', function (message) {
+                //     console.log('Room message: ' + message.body);
+                //     showRoomList(JSON.parse(message.body));
+                // });
+
+                stompClient.subscribe('/user/queue/room', function (message) {
+                    console.log('Room message: ' + message.body);
+                    showRoomList(JSON.parse(message.body));
+                });
+
+                stompClient.subscribe('/room/room-list/create-room', function (message) {
+                    console.log('Room message: ' + message.body);
+                    plusRoom(JSON.parse(message.body));
+                });
+
+                stompClient.subscribe('/room/room-list/delete-room', function (message) {
+                    console.log('Room message: ' + message.body);
+                    deleteRoom(JSON.parse(message.body));
+                });
+
+                stompClient.subscribe('/room/room-list/update-room', function (message) {
+                    console.log('Room message: ' + message.body);
+                    updateMember(JSON.parse(message.body));
+                });
+
+                stompClient.send('/app/room/room-list', {},JSON.stringify({
+                    'state': 'ok',
+                }));
+            },
+            function (e) {
+                //콜백 에러
+                console.log('에러'+e);
+            }
+        );
+    }
+
+    function showRoomList(data){
+        console.log(data);
+
+        if(Object.keys(data).length === 0) return;
+
+        let roomUl = document.getElementById('roomUl');
+        roomUl.innerText = '';
+
+        // data.forEach(room => {
+        //     const li = document.createElement('li');
+        //     const a = document.createElement('a');
+        //
+        //     a.id = room.key;
+        //     a.href = '#';
+        //     a.textContent = room.value.title;
+        //     a.onclick = function () {
+        //         joinRoom(room.key);
+        //     };
+        //
+        //     li.appendChild(a);
+        //     li.appendChild(document.createTextNode(` ${room.value.memberList.length} / ${room.value.number} `))
+        //     roomUl.appendChild(li);
+        // });
+
+        // for(key in data){
+        //     let li = document.createElement('li');
+        //     let a = document.createElement('a');
+        //     let div = document.createElement('div');
+        //
+        //     a.id = key;
+        //     a.href = '#';
+        //     a.textContent = data[key].title;
+        //
+        //     div.innerText = `${data[key].memberList.length} / ${data[key].number} `;
+        //
+        //     if(data[key].memberList.length < data[key].number){
+        //         a.onclick = function () {
+        //             joinRoom(key);
+        //         };
+        //     }else{
+        //         a.removeAttribute('onclick');
+        //         a.removeAttribute('href');
+        //         div.innerText += '(들어올 자리가 없어요)';
+        //     }
+        //
+        //     li.appendChild(a);
+        //     li.appendChild(div);
+        //     // li.appendChild(document.createTextNode())
+        //     roomUl.appendChild(li);
+        // }
+        Object.entries(data).forEach(([key, value]) => {
+            let li = document.createElement('li');
+            let a = document.createElement('a');
+            let div = document.createElement('div');
+
+            li.id = 'li-'+key;
+            div.id = 'div-'+key;
+            a.id = 'a-'+key;
+            a.href = '#';
+            a.textContent = value.title;
+
+            div.innerText = `${value.memberList.length} / ${value.number} `;
+
+            if(value.memberList.length < value.number){
+                a.onclick = function () {
+                    joinRoom(key);
+                };
+            }else{
+                a.onclick = null;
+                a.removeAttribute('href');
+                div.innerText += '(들어올 자리가 없어요)';
+            }
+
+            li.appendChild(a);
+            li.appendChild(div);
+            // li.appendChild(document.createTextNode())
+            roomUl.appendChild(li);
+        })
+    }
+
+    function plusRoom(data){
+        console.log(data);
+
+        let roomUl = document.getElementById('roomUl');
+
+        let li = document.createElement('li');
+        let a = document.createElement('a');
+        let div = document.createElement('div');
+
+        li.id = 'li-'+data.roomId;
+        div.id = 'div-'+data.roomId;
+        a.id = 'a-'+data.roomId;
+        a.href = '#';
+        a.textContent = data.title;
+
+        div.innerText = `${data.memberList.length} / ${data.number} `;
+
+        if(data.memberList.length < data.number){
+            a.onclick = function () {
+                joinRoom(data.roomId);
+            };
+        }else{
+            a.onclick = null;
+            a.removeAttribute('href');
+            div.innerText += '(들어올 자리가 없어요)';
+        }
+
+        li.appendChild(a);
+        li.appendChild(div);
+        // li.appendChild(document.createTextNode())
+        roomUl.appendChild(li);
+    }
+
+    function deleteRoom(data){
+        console.log(data);
+
+        let li = document.getElementById('li-'+data);
+        li.remove();
+    }
+
+    function updateMember(data){
+        console.log(data);
+
+        let li = document.getElementById('li-'+data.roomId);
+        let div = document.getElementById('div-'+data.roomId);
+        let a = document.getElementById('a-'+data.roomId);
+
+        div.innerText = `${data.countMember} / ${data.number} `;
+
+        if(data.countMember < data.number){
+            a.onclick = function () {
+                joinRoom(data.roomId);
+            };
+            a.href = '#';
+        }else{
+            a.onclick = null;
+            a.removeAttribute('href');
+            div.innerText += '(들어올 자리가 없어요)';
+        }
+
+        li.appendChild(a);
+        li.appendChild(div);
+        // li.appendChild(document.createTextNode())
+        // roomUl.appendChild(li);
+    }
+
+    connect();
+</script>
+
+</body>
+</html>
