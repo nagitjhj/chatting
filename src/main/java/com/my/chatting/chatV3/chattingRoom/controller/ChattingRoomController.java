@@ -6,6 +6,8 @@ import com.my.chatting.chatV3.chattingRoom.repository.ChattingRoomRepository;
 import com.my.chatting.chatV3.chattingRoom.service.ChattingRoomService;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -57,6 +59,25 @@ public class ChattingRoomController {
         ChattingRoom room = repository.findById(roomId);
         model.addAttribute("room", room);
         return "chatV3/chatting-room/room";
+    }
+
+    @PostMapping("/room/room")
+    public String createRoomV2(String roomId, Model model) {
+        ChattingRoom room = repository.findById(roomId);
+        model.addAttribute("room", room);
+        return "chatV3/chatting-room/room";
+    }
+
+    @ResponseBody
+    @PostMapping("/room/pw")
+    public ResponseEntity<String> enterPrivateRoom(@RequestBody Map<String, String> map) {
+        ChattingRoom room = repository.findById(map.get("roomId"));
+
+        if(room.getPw().equals(map.get("pw"))){
+            return new ResponseEntity<>(HttpStatus.OK);
+        }else{
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
     }
 
     @GetMapping("/room-list")

@@ -42,7 +42,8 @@ public class ChattingRoomRepository {
     public List<ResponseChattingRoomListInfo> findChattingRoomListInfo() {
         List<ResponseChattingRoomListInfo> infos = new ArrayList<>();
         store.forEach((key, value) -> {
-            infos.add(new ResponseChattingRoomListInfo(key, value.getTitle(), value.getNumber(), value.getMemberList().size()));
+            infos.add(new ResponseChattingRoomListInfo(key, value.getTitle(), value.getNumber(), value.getMemberList().size(),
+                    value.getPw()!=null?true:false));
         });
         return infos;
     }

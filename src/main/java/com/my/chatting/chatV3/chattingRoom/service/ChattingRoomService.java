@@ -14,7 +14,7 @@ public class ChattingRoomService {
     public ChattingRoom createChattingRoom(RequestCreateRoom room) {
         String roomId = String.valueOf(System.currentTimeMillis());
 
-        ChattingRoom chattingRoom = new ChattingRoom(roomId, room.getTitle(), room.getNumber());
+        ChattingRoom chattingRoom = new ChattingRoom(roomId, room.getTitle(), room.getNumber(), room.getPw());
         repository.save(roomId, chattingRoom);
         return chattingRoom;
     }

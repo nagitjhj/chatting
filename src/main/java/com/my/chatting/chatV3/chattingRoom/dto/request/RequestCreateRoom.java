@@ -8,4 +8,5 @@ import lombok.Setter;
 public class RequestCreateRoom {
     private String title;
     private int number;
+    private String pw;
 }

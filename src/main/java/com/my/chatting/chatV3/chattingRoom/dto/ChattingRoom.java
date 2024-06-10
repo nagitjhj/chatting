@@ -14,12 +14,20 @@ public class ChattingRoom {
     private String host;
     private String title;
     private int number;
+    private String pw;
+    private boolean isPrivate;
     private List<Member> memberList;
 
-    public ChattingRoom(String roomId, String title, int number) {
+    public ChattingRoom(String roomId, String title, int number, String pw) {
         this.roomId = roomId;
         this.title = title;
         this.number = number;
+        this.pw = pw;
+        if(pw == null || pw.isBlank()){
+            isPrivate = false;
+        }else{
+            isPrivate = true;
+        }
     }
 
     public void setMember(Member member){

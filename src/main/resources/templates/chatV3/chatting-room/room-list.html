@@ -9,7 +9,7 @@
 
 </head>
 <body>
-<h1>채팅방들입니다...없으면 만들어보세요....</h1>
+<h1>채팅방 리스트입니다...없으면 만들어보세요....</h1>
 <a href="/chatV3/chatting-room/create-room"><h2>채팅방 만들기(나도 방장 가능)</h2></a>
 
 <div id="roomDiv">
@@ -18,17 +18,32 @@
 </div>
 
 <script>
-    function joinRoom(roomId) {
-        let form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/chatV3/chatting-room/room/'+roomId;
-        let hiddenField = document.createElement('input');
-        hiddenField.type = 'hidden';
-        hiddenField.name = 'roomId';
-        hiddenField.value = roomId;
-        form.appendChild(hiddenField);
-        document.body.appendChild(form);
-        form.submit();
+    function joinRoom(roomId, isPrivate) {
+        if(isPrivate){
+            let pw = prompt('비밀번호를 입력하세요');
+            fetch('/chatV3/chatting-room/room/pw', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({pw: pw, roomId: roomId})
+            }).then((res) => {
+                if(res.ok){
+                    let form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/chatV3/chatting-room/room/room';
+                    let hiddenField = document.createElement('input');
+                    hiddenField.type = 'hidden';
+                    hiddenField.name = 'roomId';
+                    hiddenField.value = roomId;
+                    form.appendChild(hiddenField);
+                    document.body.appendChild(form);
+                    form.submit();
+                }else{
+                    alert('비밀번호가 달라요');
+                }
+            })
+        }
     }
 
 
@@ -137,10 +152,13 @@
             a.textContent = value.title;
 
             div.innerText = `${value.memberList.length} / ${value.number} `;
+            if(value.private){
+                div.innerText += ' (비밀방)';
+            }
 
             if(value.memberList.length < value.number){
                 a.onclick = function () {
-                    joinRoom(key);
+                    joinRoom(key, value.private);
                 };
             }else{
                 a.onclick = null;
@@ -171,10 +189,13 @@
         a.textContent = data.title;
 
         div.innerText = `${data.memberList.length} / ${data.number} `;
+        if(data.private){
+            div.innerText += ' (비밀방)';
+        }
 
         if(data.memberList.length < data.number){
             a.onclick = function () {
-                joinRoom(data.roomId);
+                joinRoom(data.roomId, data.private);
             };
         }else{
             a.onclick = null;
@@ -206,7 +227,7 @@
 
         if(data.countMember < data.number){
             a.onclick = function () {
-                joinRoom(data.roomId);
+                joinRoom(data.roomId, data.private);
             };
             a.href = '#';
         }else{

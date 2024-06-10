@@ -12,4 +12,5 @@ public class ResponseChattingRoomListInfo {
     private String title;
     private int number;
     private int memberCount;
+    private boolean isPrivate;
 }
