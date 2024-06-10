@@ -1,5 +1,6 @@
-package com.my.chatting.chatV3.chattingRoom.dto;
+package com.my.chatting.chatV3.chattingRoom.dto.response;
 
+import com.my.chatting.chatV3.chattingRoom.dto.Member;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;

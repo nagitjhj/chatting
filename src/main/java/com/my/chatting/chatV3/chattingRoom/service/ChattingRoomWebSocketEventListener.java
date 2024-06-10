@@ -3,27 +3,23 @@ package com.my.chatting.chatV3.chattingRoom.service;
 import com.my.chatting.chatV3.chattingRoom.dto.ChattingRoom;
 import com.my.chatting.chatV3.chattingRoom.dto.Member;
 import com.my.chatting.chatV3.chattingRoom.dto.Nickname;
-import com.my.chatting.chatV3.chattingRoom.dto.ResponseRoomMember;
+import com.my.chatting.chatV3.chattingRoom.dto.response.MemberMessage;
+import com.my.chatting.chatV3.chattingRoom.dto.response.ResponseRoomMember;
+import com.my.chatting.chatV3.chattingRoom.dto.response.ResponseRoomMemberPlus;
 import com.my.chatting.chatV3.chattingRoom.repository.ChattingRoomRepository;
-import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.GenericMessage;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.messaging.support.NativeMessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -62,6 +58,9 @@ public class ChattingRoomWebSocketEventListener {
             member.setHost(true);
         }
 
+        ResponseRoomMemberPlus responseRoomMemberPlus = new ResponseRoomMemberPlus(roomId, sessionId);
+        MemberMessage memberMessage = new MemberMessage(true);
+
         for(Nickname name : Nickname.getRandomNickName()){
             boolean flag = true;
             if(room.getMemberList() == null){
@@ -73,12 +72,18 @@ public class ChattingRoomWebSocketEventListener {
                 }
                 if(flag){
                     member.setNickname(String.valueOf(name));
+                    responseRoomMemberPlus.setNickname(String.valueOf(name));
+                    memberMessage.setNickname(String.valueOf(name));
                     break;
                 }
             }
         }
 
         ChattingRoom chattingRoom = repository.updateMember(roomId, member);
+        responseRoomMemberPlus.setCountMember(chattingRoom.getMemberList().size());
+
+        template.convertAndSend("/room/member/enter/"+roomId, responseRoomMemberPlus);
+        template.convertAndSend("/topic/member/"+roomId, memberMessage);
 
         // Create headers map
 //        Map<String, Object> headersMap = new HashMap<>();

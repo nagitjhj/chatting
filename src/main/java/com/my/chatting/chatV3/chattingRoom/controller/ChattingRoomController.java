@@ -1,10 +1,14 @@
 package com.my.chatting.chatV3.chattingRoom.controller;
 
 import com.my.chatting.chatV3.chattingRoom.dto.ChattingRoom;
-import com.my.chatting.chatV3.chattingRoom.dto.RequestCreateRoom;
+import com.my.chatting.chatV3.chattingRoom.dto.request.RequestCreateRoom;
 import com.my.chatting.chatV3.chattingRoom.repository.ChattingRoomRepository;
 import com.my.chatting.chatV3.chattingRoom.service.ChattingRoomService;
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -34,9 +38,17 @@ public class ChattingRoomController {
 
     @DeleteMapping("/room")
     public String deleteRoom(@RequestBody Map<String, String> map) {
+        ChattingRoom roomId = repository.findById(map.get("roomId"));
+//        template.convertAndSend("/room/delete/"+map.get("roomId"), map.get("roomId"));
         repository.delete(map.get("roomId"));
-        template.convertAndSend("/room/delete/"+map.get("roomId"), map.get("roomId"));
         template.convertAndSend("/room/room-list/delete-room", map.get("roomId"));
+
+        roomId.getMemberList().forEach(room -> {
+            if(!room.isHost()){
+                template.convertAndSendToUser(room.getId(),"/queue/room/delete", map.get("roomId"), createHeaders(room.getId()));
+            }
+        });
+
         return "chatV3/chatting-room/room-list";
     }
 
@@ -52,5 +64,14 @@ public class ChattingRoomController {
         Map<String, ChattingRoom> all = repository.findAll();
 //        model.addAttribute("roomMap", all);
         return "chatV3/chatting-room/room-list";
+    }
+
+    private MessageHeaders createHeaders(@Nullable String sessionId){
+        SimpMessageHeaderAccessor headerAccessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+        if(sessionId != null) {
+            headerAccessor.setSessionId(sessionId);
+        }
+        headerAccessor.setLeaveMutable(true);
+        return headerAccessor.getMessageHeaders();
     }
 }

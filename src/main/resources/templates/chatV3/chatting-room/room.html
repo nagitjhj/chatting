@@ -120,10 +120,19 @@
         stompClient.connect({'roomId': roomId}, function (frame) {
                 console.log('Connected : ' + frame);
 
-                stompClient.subscribe('/room/member/'+roomId, function (message) {
+                stompClient.subscribe('/user/queue/room/member/'+roomId, function (message) {
                     console.log('Room message: ' + message.body);
                     showMember(JSON.parse(message.body));
-                    // enterMember(JSON.parse(message.body));
+                });
+
+                stompClient.subscribe('/room/member/close/'+roomId, function (message) {
+                    console.log('Room message: ' + message.body);
+                    deleteMember(JSON.parse(message.body));
+                });
+
+                stompClient.subscribe('/room/member/enter/'+roomId, function (message) {
+                    console.log('Room message: ' + message.body);
+                    plusMember(JSON.parse(message.body));
                 });
 
                 // stompClient.subscribe('/queue/' + recipient, function (message) {
@@ -132,7 +141,16 @@
                     showMessage(JSON.parse(message.body));
                 });
 
-                stompClient.subscribe('/room/delete/'+roomId, function (message) {
+                stompClient.subscribe('/topic/member/'+roomId, function (message) {
+                    showMemberMessage(JSON.parse(message.body));
+                });
+
+                // stompClient.subscribe('/room/delete/'+roomId, function (message) {
+                //     // showMessage(JSON.parse(message.body));
+                //     deleteRoom();
+                // });
+
+                stompClient.subscribe('/user/queue/room/delete', function (message) {
                     // showMessage(JSON.parse(message.body));
                     deleteRoom();
                 });
@@ -194,8 +212,32 @@
         chatting.scrollTop = chatting.scrollHeight;
     }
 
+    function showMemberMessage(data){
+        let chatting = document.getElementById('talk');
+        let message;
+        if(data.enter){
+            message = "들이 왔습니다. 반갑게 인사해보세요.";
+        }else{
+            message = "떠나버렸습니다........"
+        }
+
+        let item = `
+                <div>
+                    ${data.nickname} 님이 ${message}
+                </div>
+            `;
+
+        chatting.innerHTML += item;
+        chatting.scrollTop = chatting.scrollHeight;
+    }
+
 
     function showMember(data){
+        //임시로 - 수정필요 아나
+        let elementById = document.getElementById('hostDiv');
+        elementById.innerHTML = '';
+
+
         console.log(data);
         //1. 인원수
         document.getElementById('numberCount').innerText = data.memberCount;
@@ -209,7 +251,10 @@
         data.memberList.forEach(user => {
             const li = document.createElement('li');
             const mySession = document.getElementById('mySession');
+
+            li.id = 'li-'+user.id;
             li.textContent = user.nickname;
+
             if(mySession.value === ''){
                 mySession.value = data.mySession;
             }
@@ -219,6 +264,8 @@
             }
             if(user.id === data.host){
                 li.textContent += ' (방장)';
+            }
+            if(data.host === mySession.value){
                 let hostDiv = document.getElementById('hostDiv');
                 let hostA = `
                     <a href="#" onclick="deleteRoomRequest(roomId)"><h4>채팅방없애기(내가 방장~^^~)</h4></a>
@@ -232,68 +279,47 @@
     function plusMember(data){
         console.log(data);
         //1. 인원수
-        document.getElementById('numberCount').innerText = data.memberCount;
+        document.getElementById('numberCount').innerText = data.countMember;
         // document.getElementById('number').innerText = data.number;
 
         //2. 인원
         const userList = document.getElementById('userList');
-        document.getElementById('hostSession').value = data.host;
+        const li = document.createElement('li');
 
-        data.memberList.forEach(user => {
-            const li = document.createElement('li');
-            const mySession = document.getElementById('mySession');
-            li.textContent = user.nickname;
-            if(mySession.value === ''){
-                mySession.value = data.mySession;
-            }
-            if(user.id === mySession.value){
-                li.textContent += ' (나)';
-                document.getElementById('myId').value = user.nickname;
-            }
-            if(user.id === data.host){
-                li.textContent += ' (방장)';
-                let hostDiv = document.getElementById('hostDiv');
-                let hostA = `
-                    <a href="#" onclick="deleteRoomRequest(roomId)"><h2>채팅방없애기(내가 방장~^^~)</h2></a>
-                `;
-                hostDiv.innerText += hostA;
-            }
-            userList.appendChild(li);
-        });
+        li.id = 'li-'+data.sessionId;
+        li.textContent = data.nickname;
+
+        userList.appendChild(li);
     }
 
     function deleteMember(data){
         console.log(data);
         //1. 인원수
-        document.getElementById('numberCount').innerText = data.memberCount;
+        document.getElementById('numberCount').innerText = data.countMember;
         // document.getElementById('number').innerText = data.number;
 
         //2. 인원
-        const userList = document.getElementById('userList');
-        userList.innerHTML = ''; // Clear the existing list
-        document.getElementById('hostSession').value = data.host;
+        let closeLi = document.getElementById('li-'+data.sessionId);
+        closeLi.remove();
 
-        data.memberList.forEach(user => {
-            const li = document.createElement('li');
+        if(data.host) {
             const mySession = document.getElementById('mySession');
-            li.textContent = user.nickname;
-            if(mySession.value === ''){
-                mySession.value = data.mySession;
-            }
-            if(user.id === mySession.value){
-                li.textContent += ' (나)';
-                document.getElementById('myId').value = user.nickname;
-            }
-            if(user.id === data.host){
-                li.textContent += ' (방장)';
+            if (mySession.value === data.nextHostSessionId) {
+                let myLi = document.getElementById('li-' + mySession.value);
+                myLi.textContent += ' (방장)';
+
+                document.getElementById('hostSession').value = data.nextHostSessionId;
                 let hostDiv = document.getElementById('hostDiv');
                 let hostA = `
-                    <a href="#" onclick="deleteRoomRequest(roomId)"><h2>채팅방없애기(내가 방장~^^~)</h2></a>
+                    <a href="#" onclick="deleteRoomRequest(roomId)"><h4>채팅방없애기(내가 방장~^^~)</h4></a>
                 `;
-                hostDiv.innerText += hostA;
+
+                hostDiv.innerHTML += hostA;
             }
-            userList.appendChild(li);
-        });
+        }else{
+            let hostLi = document.getElementById('li-' + data.nextHostSessionId);
+            hostLi.textContent += ' (방장)';
+        }
     }
 
     function deleteRoomRequest(id) {

@@ -1,9 +1,13 @@
 package com.my.chatting.chatV3.chattingRoom.controller;
 
 import com.my.chatting.chatV3.chattingRoom.dto.*;
+import com.my.chatting.chatV3.chattingRoom.dto.request.RequestSendMessage;
+import com.my.chatting.chatV3.chattingRoom.dto.response.MemberMessage;
+import com.my.chatting.chatV3.chattingRoom.dto.response.ResponseRoomInfo;
+import com.my.chatting.chatV3.chattingRoom.dto.response.ResponseRoomMember;
+import com.my.chatting.chatV3.chattingRoom.dto.response.ResponseRoomMemberClose;
 import com.my.chatting.chatV3.chattingRoom.repository.ChattingRoomRepository;
 import jakarta.annotation.Nullable;
-import jakarta.websocket.server.PathParam;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.MessageHeaders;
@@ -13,7 +17,6 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Map;
 
@@ -36,11 +39,11 @@ public class MessageController {
                 room.getMemberList()
         );
 
-        template.convertAndSend("/room/member/"+roomId, roomInfo);
+        template.convertAndSendToUser(accessor.getSessionId(), "/queue/room/member/"+roomId, roomInfo, createHeaders(accessor.getSessionId()));
     }
 
     @MessageMapping("{roomId}")
-    public void roomChat(@DestinationVariable("roomId") String roomId, SendMessage message, SimpMessageHeaderAccessor accessor) {
+    public void roomChat(@DestinationVariable("roomId") String roomId, RequestSendMessage message, SimpMessageHeaderAccessor accessor) {
         message.setSenderId(accessor.getSessionId());
         template.convertAndSend("/topic/"+roomId, message);
     }
@@ -68,13 +71,23 @@ public class MessageController {
             return;
         }
 
+        ResponseRoomMemberClose responseRoomMemberClose = new ResponseRoomMemberClose(message.get("roomId"), accessor.getSessionId());
+        MemberMessage memberMessage = new MemberMessage(false);
+
         if(chattingRoom.getHost().equals(accessor.getSessionId())){
+            memberMessage.setNickname(chattingRoom.getMemberList().get(0).getNickname());
+
             chattingRoom.getMemberList().remove(0);
             chattingRoom.setHost(chattingRoom.getMemberList().get(0).getId());
             chattingRoom.getMemberList().get(0).setHost(true);
+
+            responseRoomMemberClose.setHost(true);
+            responseRoomMemberClose.setNextHostSessionId(chattingRoom.getMemberList().get(0).getId());
         }else{
+            responseRoomMemberClose.setHost(false);
             for(Member m : chattingRoom.getMemberList()){
                 if(m.getId().equals(accessor.getSessionId())){
+                    memberMessage.setNickname(m.getNickname());
                     chattingRoom.getMemberList().remove(m);
                     break;
                 }
@@ -85,18 +98,11 @@ public class MessageController {
         template.convertAndSend("/room/room-list/update-room", new ResponseRoomMember(
                 message.get("roomId"), chattingRoom.getNumber(), chattingRoom.getMemberList().size()
         ));
+        responseRoomMemberClose.setCountMember(chattingRoom.getMemberList().size());
 
-        // room 멤버 업뎃
-        ResponseRoomInfo roomInfo = new ResponseRoomInfo(
-                message.get("roomId"),
-                chattingRoom.getNumber(),
-                chattingRoom.getMemberList().size(),
-                chattingRoom.getHost(),
-                accessor.getSessionId(),
-                chattingRoom.getMemberList()
-        );
-
-        template.convertAndSend("/room/member/"+message.get("roomId"), roomInfo);
+        // room 멤버 나간것....
+        template.convertAndSend("/room/member/close/"+message.get("roomId"), responseRoomMemberClose);
+        template.convertAndSend("/topic/member/"+message.get("roomId"), memberMessage);
     }
 
     private MessageHeaders createHeaders(@Nullable String sessionId){

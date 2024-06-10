@@ -1,7 +1,7 @@
 package com.my.chatting.chatV3.chattingRoom.repository;
 
 import com.my.chatting.chatV3.chattingRoom.dto.ChattingRoom;
-import com.my.chatting.chatV3.chattingRoom.dto.ChattingRoomListInfo;
+import com.my.chatting.chatV3.chattingRoom.dto.response.ResponseChattingRoomListInfo;
 import com.my.chatting.chatV3.chattingRoom.dto.Member;
 import org.springframework.stereotype.Repository;
 
@@ -39,10 +39,10 @@ public class ChattingRoomRepository {
         return store;
     }
 
-    public List<ChattingRoomListInfo> findChattingRoomListInfo() {
-        List<ChattingRoomListInfo> infos = new ArrayList<>();
+    public List<ResponseChattingRoomListInfo> findChattingRoomListInfo() {
+        List<ResponseChattingRoomListInfo> infos = new ArrayList<>();
         store.forEach((key, value) -> {
-            infos.add(new ChattingRoomListInfo(key, value.getTitle(), value.getNumber(), value.getMemberList().size()));
+            infos.add(new ResponseChattingRoomListInfo(key, value.getTitle(), value.getNumber(), value.getMemberList().size()));
         });
         return infos;
     }

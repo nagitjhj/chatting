@@ -1,4 +1,4 @@
-package com.my.chatting.chatV3.chattingRoom.dto;
+package com.my.chatting.chatV3.chattingRoom.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

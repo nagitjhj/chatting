@@ -1,7 +1,7 @@
 package com.my.chatting.chatV3.chattingRoom.service;
 
 import com.my.chatting.chatV3.chattingRoom.dto.ChattingRoom;
-import com.my.chatting.chatV3.chattingRoom.dto.RequestCreateRoom;
+import com.my.chatting.chatV3.chattingRoom.dto.request.RequestCreateRoom;
 import com.my.chatting.chatV3.chattingRoom.repository.ChattingRoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
