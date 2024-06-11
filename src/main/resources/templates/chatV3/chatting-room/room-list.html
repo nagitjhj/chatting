@@ -43,6 +43,17 @@
                     alert('비밀번호가 달라요');
                 }
             })
+        }else{
+            let form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/chatV3/chatting-room/room/room';
+            let hiddenField = document.createElement('input');
+            hiddenField.type = 'hidden';
+            hiddenField.name = 'roomId';
+            hiddenField.value = roomId;
+            form.appendChild(hiddenField);
+            document.body.appendChild(form);
+            form.submit();
         }
     }
 
@@ -58,8 +69,8 @@
                 //     console.log('Room message: ' + message.body);
                 //     showRoomList(JSON.parse(message.body));
                 // });
-                const sessionId = /\/([^\/]+)\/websocket/.exec(socket.url);
-                console.log('Session ID: ' + sessionId);
+                // const sessionId = /\/([^\/]+)\/websocket/.exec(socket.url);
+                // console.log('Session ID: ' + sessionId);
 
                 stompClient.subscribe('/user/queue/room', function (message) {
                     console.log('Room message: ' + message.body);
