@@ -58,6 +58,8 @@
                 //     console.log('Room message: ' + message.body);
                 //     showRoomList(JSON.parse(message.body));
                 // });
+                const sessionId = /\/([^\/]+)\/websocket/.exec(socket.url);
+                console.log('Session ID: ' + sessionId);
 
                 stompClient.subscribe('/user/queue/room', function (message) {
                     console.log('Room message: ' + message.body);
